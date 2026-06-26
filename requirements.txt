@@ -1,0 +1,14 @@
+numpy
+pandas
+matplotlib
+scikit-learn
+tensorflow
+tensorflow-datasets
+tensorflow-hub
+tf-keras
+torch
+transformers
+datasets
+evaluate
+accelerate
+streamlit

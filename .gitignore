@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Models and large files
+*.h5
+*.keras
+*.pt
+*.pth
+*.bin
+*.safetensors
+models/
+checkpoints/
+distilbert-imdb-results/
+logs/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
