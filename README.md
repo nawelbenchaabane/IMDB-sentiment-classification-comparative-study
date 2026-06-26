@@ -1,234 +1,385 @@
-# Stroke Risk Prediction ML
+# IMDB Sentiment Classification — Comparative Study
 
-End-to-end machine learning project for stroke risk prediction using public or synthetic clinical-style tabular data. The project is designed to run on CPU and demonstrates a complete ML workflow: data preprocessing, class imbalance handling, model comparison, evaluation, interpretability-oriented reporting, and a lightweight Streamlit demo.
+This project presents a comparative study of several approaches for binary sentiment classification on the IMDB movie reviews dataset.
 
-> **Disclaimer**  
-> This project is for educational and portfolio purposes only. It is not intended for clinical use, diagnosis, treatment recommendation, or real-world medical decision-making.
+The goal is to predict whether a movie review is **negative** or **positive** using different NLP and deep learning techniques, ranging from classical machine learning models to Transformer-based architectures.
 
-## 1. Project objective
+The project compares the following approaches:
 
-Stroke is a high-impact clinical event where early risk assessment can support prevention-oriented workflows. The objective of this project is to build a reproducible machine learning pipeline that predicts whether a patient is at risk of stroke based on demographic, clinical, and lifestyle-related variables.
+- TF-IDF + Logistic Regression
+- TensorFlow Hub Swivel Embedding + Dense Classifier
+- TensorFlow Hub Universal Sentence Encoder + Dense Classifier
+- TensorFlow Hub NNLM 128D + Dense Classifier
+- BiLSTM
+- Improved BiLSTM
+- Fine-tuned DistilBERT
 
-The project focuses on:
+The best-performing model was **DistilBERT**, achieving a test accuracy of **90.76%**.
 
-- clean and reproducible preprocessing;
-- stratified train/test split;
-- handling imbalanced classes;
-- comparison of CPU-friendly machine learning models;
-- medical evaluation metrics such as sensitivity/recall and specificity;
-- transparent limitations and model card documentation;
-- lightweight demo application.
+---
 
-## 2. Dataset
+## Project Overview
 
-### Recommended public dataset
+Sentiment analysis is a common Natural Language Processing task that aims to identify the emotional polarity of a text. In this project, the task is formulated as a binary classification problem:
 
-Use the Kaggle **Stroke Prediction Dataset**:
+- `0` → Negative review
+- `1` → Positive review
 
-- Source: Kaggle, `fedesoriano/stroke-prediction-dataset`
-- Expected CSV name: `healthcare-dataset-stroke-data.csv`
-- Expected path in this project:
+The main objective was not only to train a single model, but to compare several modeling strategies and analyze their strengths and limitations.
 
-```bash
-./data/raw/healthcare-dataset-stroke-data.csv
-```
+This project shows that classical NLP methods such as TF-IDF can be highly competitive, while fine-tuning a Transformer-based model such as DistilBERT can provide the best final performance.
 
-The target variable is:
+---
 
-```text
-stroke
-```
+## Dataset
 
-Expected features include:
+The project uses the IMDB Reviews dataset, which contains movie reviews labeled as positive or negative.
 
-```text
-gender, age, hypertension, heart_disease, ever_married, work_type,
-Residence_type, avg_glucose_level, bmi, smoking_status
-```
+The dataset was loaded using `tensorflow_datasets`.
 
-### Synthetic sample dataset
+The data was split as follows:
 
-A small synthetic sample is included in:
+| Split | Number of samples |
+|---|---:|
+| Training set | 15,000 |
+| Validation set | 10,000 |
+| Test set | 25,000 |
 
-```bash
-./data/sample/synthetic_stroke_sample.csv
-```
+The classes are balanced between positive and negative reviews, which makes accuracy a meaningful first metric. However, additional metrics such as precision, recall, F1-score, and confusion matrix were also used for evaluation.
 
-This file is not intended for meaningful model training. It exists only to validate the repository structure, run unit tests, and demonstrate the pipeline without external data.
+---
 
-## 3. Methodology
+## Exploratory Data Analysis
 
-The pipeline includes:
+Before training the models, the dataset was explored to better understand the structure of the reviews.
 
-1. Data loading and validation
-2. Target/feature separation
-3. Numeric preprocessing
-   - median imputation
-   - standardization
-4. Categorical preprocessing
-   - most frequent imputation
-   - one-hot encoding
-5. Class imbalance handling
-   - random over-sampling on the training set only
-6. Model comparison
-   - Logistic Regression
-   - Random Forest
-   - Gradient Boosting
-7. Evaluation on a held-out test set
+The analysis included:
 
-## 4. Evaluation metrics
+- Checking the number of samples in each split
+- Inspecting positive and negative review examples
+- Analyzing the class distribution
+- Measuring review lengths in terms of characters and words
+- Visualizing the distribution of review lengths
+- Checking for missing or empty reviews
 
-Because stroke prediction is an imbalanced binary classification task, accuracy alone is not sufficient. This project reports:
+This step confirmed that the dataset was clean, balanced, and suitable for binary sentiment classification.
 
-- Accuracy
-- Precision
-- Recall / Sensitivity
-- Specificity
-- F1-score
-- ROC-AUC
-- Confusion matrix
+---
 
-For a screening-oriented model, recall/sensitivity is especially important because false negatives are clinically undesirable. However, this project is not a clinical model and does not define an operational threshold for medical use.
+## Models Implemented
 
-## 5. Project structure
+### 1. TF-IDF + Logistic Regression
+
+The first model is a classical machine learning baseline.
+
+The raw text reviews were transformed into numerical vectors using TF-IDF. The vectorizer used unigrams and bigrams in order to capture both individual words and short expressions such as:
+
+- `not good`
+- `very bad`
+- `waste time`
+- `really enjoyed`
+
+The resulting TF-IDF matrix was used to train a Logistic Regression classifier.
+
+This model provided a strong baseline and outperformed several deep learning architectures.
+
+---
+
+### 2. TensorFlow Hub Swivel Embedding + Dense Classifier
+
+The first deep learning model used a pre-trained TensorFlow Hub embedding layer:
 
 ```text
-stroke-risk-prediction-ml/
+https://tfhub.dev/google/tf2-preview/gnews-swivel-20dim/1
+```
+
+This model transforms each review into a dense vector of 20 dimensions. The embedding is then passed through a small dense neural network for binary classification.
+
+The architecture can be summarized as:
+
+```text
+Raw review → Swivel embedding → Dense layer → Output layer
+```
+
+Although simple and efficient, this model did not outperform the TF-IDF baseline. One possible reason is that the embedding dimension is relatively small and may not capture complex sentiment patterns.
+
+---
+
+### 3. TensorFlow Hub Universal Sentence Encoder + Dense Classifier
+
+The second TensorFlow Hub model used the Universal Sentence Encoder:
+
+```text
+https://tfhub.dev/google/universal-sentence-encoder/4
+```
+
+Unlike the Swivel model, the Universal Sentence Encoder produces a richer sentence-level embedding of 512 dimensions.
+
+The architecture can be summarized as:
+
+```text
+Raw review → Universal Sentence Encoder → Dense layers with dropout → Sentiment probability
+```
+
+The Universal Sentence Encoder provides semantic sentence representations, but in this experiment it did not outperform the TF-IDF baseline. This suggests that a frozen general-purpose embedding may not always be optimal for a specific sentiment classification task.
+
+---
+
+### 4. TensorFlow Hub NNLM 128D + Dense Classifier
+
+The third TensorFlow Hub model used the NNLM 128D embedding model:
+
+```text
+https://tfhub.dev/google/nnlm-en-dim128/2
+```
+
+This model transforms each review into a dense vector of 128 dimensions. Unlike the Universal Sentence Encoder, this embedding layer was set as trainable, allowing its weights to be adapted to the IMDB sentiment classification task.
+
+The architecture can be summarized as:
+
+```text
+Raw review → NNLM 128D embedding → Dense layers with dropout → Sentiment probability
+```
+
+This model performed better than the Universal Sentence Encoder model, but still remained below the TF-IDF + Logistic Regression baseline.
+
+---
+
+### 5. BiLSTM
+
+A Bidirectional LSTM model was implemented to process the reviews as sequences of tokens.
+
+The preprocessing pipeline was:
+
+```text
+Raw review → TextVectorization → Integer token sequence → Embedding layer → BiLSTM
+```
+
+The `TextVectorization` layer was used to build a vocabulary from the training data and convert each review into a sequence of integer token IDs. These IDs were then passed to an Embedding layer, which learned dense word representations during training.
+
+The BiLSTM layer reads the sequence in both directions, allowing the model to capture contextual information from both the beginning and the end of the review.
+
+The initial BiLSTM model underperformed compared to the TF-IDF baseline.
+
+---
+
+### 6. Improved BiLSTM
+
+An improved BiLSTM architecture was also tested.
+
+The improvements included:
+
+- Increasing the maximum vocabulary size
+- Increasing the sequence length
+- Reducing dropout
+- Using a lower learning rate
+- Improving the input shape definition
+
+This improved version performed better than the first BiLSTM, but it still did not outperform the classical TF-IDF baseline.
+
+---
+
+### 7. Fine-tuned DistilBERT
+
+The final model used in this project was:
+
+```text
+distilbert-base-uncased
+```
+
+DistilBERT is a smaller and faster version of BERT obtained through knowledge distillation. It keeps the main Transformer-based architecture while reducing the number of layers.
+
+The pipeline was:
+
+```text
+Raw review
+→ DistilBERT tokenizer
+→ input_ids + attention_mask + token_type_ids
+→ Dynamic padding
+→ DistilBERT embeddings
+→ Transformer encoder layers
+→ Classification head
+→ Sentiment prediction
+```
+
+Each review was tokenized using the DistilBERT tokenizer. Long reviews were truncated to a maximum length of 256 tokens. Dynamic padding was applied with `DataCollatorWithPadding`, so padding was added only at batch creation time.
+
+Inside DistilBERT, each token ID is converted into a 768-dimensional embedding. The model combines token embeddings with positional embeddings, then processes them through Transformer encoder layers. A classification head is added on top of the pre-trained model to predict whether the review is negative or positive.
+
+DistilBERT achieved the best performance in this project.
+
+---
+
+## Results
+
+| Model | Validation Accuracy | Test Accuracy |
+|---|---:|---:|
+| TF-IDF + Logistic Regression | 0.8830 | 0.87628 |
+| TensorFlow Hub + Dense | 0.8578 | 0.84560 |
+| TensorFlow Hub USE + Dense | 0.8563 | 0.85752 |
+| TensorFlow Hub NNLM 128D + Dense | 0.8732 | 0.85992 |
+| BiLSTM | 0.8568 | 0.84264 |
+| Improved BiLSTM | 0.8785 | 0.86260 |
+| DistilBERT | **0.9062** | **0.90764** |
+
+DistilBERT achieved the best overall performance, with a test accuracy of **90.76%**.
+
+Compared to the strongest classical baseline, TF-IDF + Logistic Regression, DistilBERT improved test accuracy by approximately **3.14 percentage points**..
+
+---
+
+## Key Findings
+
+The main findings of this project are:
+
+1. **TF-IDF + Logistic Regression is a strong baseline**  
+   The classical machine learning model achieved strong results and outperformed several deep learning models.
+
+2. **TensorFlow Hub embeddings did not outperform TF-IDF**  
+   Although pre-trained embeddings provide dense semantic representations, the tested TensorFlow Hub models did not improve over the TF-IDF baseline.
+
+3. **BiLSTM models were not the best fit for this setup**  
+   The BiLSTM models learned sequential patterns but did not generalize as well as TF-IDF or DistilBERT.
+
+4. **DistilBERT achieved the best performance**  
+   Fine-tuning a pre-trained Transformer model led to the highest validation and test accuracy.
+
+5. **Model comparison is essential**  
+   This project highlights the importance of comparing classical machine learning, deep learning, and Transformer-based methods instead of assuming that more complex models are always better.
+
+---
+
+## Embedding Visualization
+
+To better understand how neural models represent text, embedding visualizations were performed on sample reviews.
+
+For the BiLSTM model, the output of the Embedding layer was inspected for one review. The review was first converted into integer token IDs using the `TextVectorization` layer. Then, each token ID was transformed into a dense vector representation.
+
+The embedding output for one review has the following shape:
+
+```text
+(sequence_length, embedding_dim)
+```
+
+A heatmap was used to visualize part of the embedding matrix, where:
+
+- each row corresponds to a token,
+- each column corresponds to an embedding dimension,
+- each color intensity corresponds to an embedding value.
+
+PCA was also applied to reduce the token embeddings from 128 dimensions to 2 dimensions, allowing the token representations to be plotted in a 2D space.
+
+
+---
+
+## Project Structure
+
+```text
+imdb-sentiment-classification-comparative-study/
 │
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
-├── LICENSE
-├── Makefile
-│
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   ├── sample/
-│   └── README.md
 │
 ├── notebooks/
-│   └── README.md
+│   └── imdb_sentiment_classification_comparative_study.ipynb
 │
 ├── src/
-│   ├── __init__.py
-│   ├── config.py
-│   ├── data_preprocessing.py
-│   ├── evaluate.py
-│   ├── predict.py
-│   ├── train.py
-│   └── utils.py
+│   └── app.py
 │
-├── models/
-│   └── README.md
+├── results/
+│   ├── model_comparison.png
+│   ├── confusion_matrix_distilbert.png
+│   └── sample_embedding_visualization.png
 │
-├── reports/
-│   ├── figures/
-│   └── model_card.md
-│
-├── app/
-│   └── streamlit_app.py
-│
-└── tests/
-    └── test_preprocessing.py
+└── assets/
+    └── project_overview.png
 ```
 
-## 6. Installation
+---
 
-Create a virtual environment:
+## Installation
+
+Clone the repository:
 
 ```bash
-python -m venv .venv
+git clone https://github.com/YOUR_USERNAME/imdb-sentiment-classification-comparative-study.git
+cd imdb-sentiment-classification-comparative-study
 ```
 
-Activate it:
-
-```bash
-# Windows
-.venv\Scripts\activate
-
-# macOS/Linux
-source .venv/bin/activate
-```
-
-Install dependencies:
+Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 7. How to train
+---
 
-With the public dataset placed in `data/raw/`:
+## Requirements
 
-```bash
-python -m src.train --data data/raw/healthcare-dataset-stroke-data.csv
-```
-
-To run quickly with the included synthetic sample:
-
-```bash
-python -m src.train --data data/sample/synthetic_stroke_sample.csv
-```
-
-Outputs are saved to:
+The main libraries used in this project are:
 
 ```text
-models/best_model.joblib
-reports/metrics.json
-reports/model_comparison.csv
-reports/figures/confusion_matrix.png
-reports/figures/roc_curve.png
+numpy
+pandas
+matplotlib
+scikit-learn
+tensorflow
+tensorflow-datasets
+tensorflow-hub
+tf-keras
+torch
+transformers
+datasets
+evaluate
+accelerate
+streamlit
 ```
 
-## 8. How to evaluate a saved model
+---
 
-```bash
-python -m src.evaluate --data data/sample/synthetic_stroke_sample.csv --model models/best_model.joblib
+## How to Run
+
+The main notebook is located in:
+
+```text
+notebooks/imdb_sentiment_classification_comparative_study.ipynb
 ```
 
-## 9. How to run the Streamlit demo
+You can run it locally or in Google Colab.
 
-After training a model:
+The notebook includes:
 
-```bash
-streamlit run app/streamlit_app.py
-```
+- dataset loading,
+- exploratory data analysis,
+- TF-IDF baseline,
+- TensorFlow Hub models,
+- BiLSTM models,
+- DistilBERT fine-tuning,
+- model comparison,
+- confusion matrices,
+- embedding visualization.
 
-## 10. Example prediction from CLI
+---
 
-```bash
-python -m src.predict \
-  --model models/best_model.joblib \
-  --age 67 \
-  --gender Female \
-  --hypertension 1 \
-  --heart_disease 0 \
-  --ever_married Yes \
-  --work_type Private \
-  --residence_type Urban \
-  --avg_glucose_level 180.5 \
-  --bmi 31.2 \
-  --smoking_status formerly_smoked
-```
+## Future Improvements
 
-## 11. Limitations
+Possible future improvements include:
 
-- The project is based on public or synthetic tabular data, not private hospital data.
-- The dataset may contain sampling bias and class imbalance.
-- The model is not externally validated.
-- No causal inference is performed.
-- The prediction output must not be interpreted as a clinical diagnosis.
+- Fine-tuning a larger Transformer model such as BERT or RoBERTa
+- Performing hyperparameter optimization for DistilBERT
+- Adding explainability methods for text classification
+- Deploying the final model with Streamlit or Gradio
+- Saving and loading the best model for inference
+- Testing the pipeline on other sentiment analysis datasets
+- Adding error analysis by review length and sentiment confidence
 
-## 12. Future work
+---
 
-- Add calibration curves and threshold analysis.
-- Add SHAP explanations.
-- Add FastAPI deployment.
-- Add GitHub Actions CI workflow.
-- Add a Dockerfile.
-- Add model monitoring examples.
+## Conclusion
 
-## 13. Author
+This project compared multiple NLP approaches for IMDB sentiment classification.
 
-Portfolio project by an AI/Data Scientist specialized in medical AI, machine learning, and clinical decision-support systems.
+The classical TF-IDF + Logistic Regression model achieved strong performance and proved to be a competitive baseline. However, the fine-tuned DistilBERT model achieved the best overall results, reaching **90.76% test accuracy**.
+
+The project demonstrates that while classical NLP methods remain highly effective, Transformer-based models can provide superior performance when fine-tuned on the target task.
