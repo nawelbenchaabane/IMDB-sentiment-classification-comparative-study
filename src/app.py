@@ -1,21 +1,24 @@
-import os
+from pathlib import Path
 
 import torch
 import streamlit as st
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
-MODEL_PATH = "models/distilbert-imdb"
+# Project paths
+BASE_DIR = Path(__file__).resolve().parents[1]
+MODEL_PATH = BASE_DIR / "models" / "distilbert-imdb"
 
 
 @st.cache_resource
 def load_model():
     """
     Load the fine-tuned DistilBERT model and tokenizer.
-    The model must be saved locally in models/distilbert-imdb.
+    The model folder must be located at:
+    models/distilbert-imdb/
     """
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
+    tokenizer = AutoTokenizer.from_pretrained(str(MODEL_PATH))
+    model = AutoModelForSequenceClassification.from_pretrained(str(MODEL_PATH))
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -26,8 +29,8 @@ def load_model():
 
 def predict_sentiment(text, tokenizer, model, device):
     """
-    Predict sentiment for a single movie review.
-    Returns the predicted label and confidence score.
+    Predict the sentiment of a single movie review.
+    Returns the predicted label, confidence score and class probabilities.
     """
     encoded_input = tokenizer(
         text,
@@ -72,19 +75,31 @@ def main():
         "using a fine-tuned DistilBERT model."
     )
 
-    if not os.path.exists(MODEL_PATH):
+    st.markdown("### Model information")
+    st.write("**Model:** Fine-tuned DistilBERT")
+    st.write("**Dataset:** IMDB Reviews")
+    st.write("**Task:** Binary sentiment classification")
+    st.write(f"**Model path:** `{MODEL_PATH}`")
+
+    if not MODEL_PATH.exists():
         st.error(
-            "Model folder not found. Please make sure the fine-tuned model is saved in "
-            "`models/distilbert-imdb/`."
+            f"Model folder not found:\n\n`{MODEL_PATH}`\n\n"
+            "Please make sure the fine-tuned model is saved in:\n\n"
+            "`models/distilbert-imdb/`"
         )
         st.stop()
 
     tokenizer, model, device = load_model()
 
+    st.markdown("---")
+
     review = st.text_area(
         "Enter a movie review:",
         height=180,
-        placeholder="Example: This movie was absolutely fantastic. The story was emotional and the acting was excellent."
+        placeholder=(
+            "Example: This movie was absolutely fantastic. "
+            "The story was emotional and the acting was excellent."
+        )
     )
 
     if st.button("Predict sentiment"):
@@ -98,6 +113,8 @@ def main():
                 device
             )
 
+            st.markdown("### Prediction result")
+
             if label == "Positive":
                 st.success(f"Prediction: {label}")
             else:
@@ -105,15 +122,18 @@ def main():
 
             st.write(f"Confidence: **{confidence:.2%}**")
 
-            st.subheader("Class probabilities")
+            st.markdown("### Class probabilities")
+
             st.write({
                 "Negative": f"{probabilities[0]:.2%}",
                 "Positive": f"{probabilities[1]:.2%}"
             })
 
+            st.progress(float(confidence))
+
     st.markdown("---")
     st.caption(
-        "Model: Fine-tuned DistilBERT | Dataset: IMDB Reviews | Task: Binary Sentiment Classification"
+        "Fine-tuned DistilBERT | IMDB Reviews Dataset | Binary Sentiment Classification"
     )
 
 
