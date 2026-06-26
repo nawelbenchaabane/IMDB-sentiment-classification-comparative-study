@@ -369,7 +369,13 @@ To run the application locally:
 
 bash : streamlit run src/app.py
 <img width="598" height="737" alt="image" src="https://github.com/user-attachments/assets/bbfe0aa4-212f-4a7d-a93b-0cf350f0b304" />
+The application allows the user to enter a movie review and returns:
 
+the predicted sentiment label;
+the confidence score;
+the probability for each class.
+
+The fine-tuned model should be saved locally in: models/distilbert-imdb/
 ---
 ## Future Improvements
 
