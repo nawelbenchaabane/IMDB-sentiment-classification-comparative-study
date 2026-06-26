@@ -361,6 +361,14 @@ The notebook includes:
 - embedding visualization.
 
 ---
+## Streamlit Application
+
+A simple Streamlit application is provided to test the fine-tuned DistilBERT model on custom movie reviews.
+
+To run the application locally:
+
+```bash
+streamlit run src/app.py
 
 ## Future Improvements
 
