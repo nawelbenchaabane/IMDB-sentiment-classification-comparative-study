@@ -367,9 +367,10 @@ A simple Streamlit application is provided to test the fine-tuned DistilBERT mod
 
 To run the application locally:
 
-```bash
-streamlit run src/app.py
+bash : streamlit run src/app.py
+<img width="598" height="737" alt="image" src="https://github.com/user-attachments/assets/bbfe0aa4-212f-4a7d-a93b-0cf350f0b304" />
 
+---
 ## Future Improvements
 
 Possible future improvements include:
